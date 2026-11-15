@@ -1,39 +1,47 @@
-name: Android Cloud APK
+name: Android CI Build
 
 on:
   push:
+    branches: [ "main", "master" ]
+  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build Debug APK & Run Unit Tests
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Setup Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          packages: 'tools platform-tools build-tools;34.0.0 platforms;android-34'
-          accept-android-sdk-licenses: true
+          gradle-version: "8.9"
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
+      - name: Run Unit Tests & Assemble Debug APK
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew testDebugUnitTest assembleDebug --no-daemon --stacktrace
+          else
+            gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace
+          fi
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
-
-      - name: Upload APK Artifact
+      - name: Upload app-debug.apk artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
+          name: damas-kitchen-studio-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
